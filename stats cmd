@@ -1,0 +1,39 @@
+index=main sourcetype=access_combined_wcookie status != 200 
+|  stats count by status
+
+index=main sourcetype=access_combined_wcookie 
+|  stats max(bytes) AS "Biggest Response", min(bytes) AS "Smallest response", median(bytes) AS "Median Respond", count AS " Total Respond"
+
+index=main sourcetype=access_combined_wcookie
+|  stats count(eval(status = 500)) AS "Internal Server errors"
+
+index=main sourcetype=access_combined_wcookie
+|  stats count(eval(status != 500)) AS "Internal Server errors"
+
+index=main sourcetype=access_combined_wcookie
+|  stats count(eval(status = 200 OR status = "4*")) AS "Internal Server errors"
+
+index=main sourcetype=access_combined_wcookie
+| fieldsummary maxvals=5
+
+index=main sourcetype=access_combined_wcookie
+| timechart span=1h avg(bytes) AS "Response Size" 
+| eventstats avg(Response Size)
+
+index=main sourcetype=access_combined_wcookie
+| timechart span=1h avg(bytes) AS "Response Size"
+
+index="_internal" log_level=WARN OR log_level=ERROR 
+| stats count by component 
+| sort count 
+| streamstats sum(count)
+
+
+index="_internal" log_level=WARN OR log_level=ERROR 
+| stats count by component 
+| sort count 
+
+index=main sourcetype=access_combined_wcookie action=purchase
+| stats count AS "total_purchases" BY itemId 
+| sort 5 - total_purchases
+| streamstats count AS rank
