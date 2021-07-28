@@ -1,0 +1,54 @@
+Current Active Users (Last Hour)
+`sim_set_index_audit` `sim_set_search_head` action=search info=completed user!="splunk-system-user" user!=cmon_user
+            |  stats dc(user) as "Distinct Users"
+            
+Average Daily Users (Last 7 Days)
+`sim_set_index_audit` `sim_set_search_head` action=search info=completed user!="splunk-system-user" user!=cmon_user
+            | timechart span=1d dc(user) as users
+            | stats avg(users) as "Avg Daily Users"
+            
+Search Count (Yesterday)
+`sim_set_search_head` `sim_audit_get_searches_for_groups(*)`
+            | where isnotnull(search)
+            | timechart span=1d count as "search count"
+            
+Indexes with Events
+| eventcount index=* summarize=false 
+      | where match(server, "^(idx|si)") | eval is_empty = if(count > 1, 0, 1)
+            | where (is_empty == 0) 
+            | stats dc(index)
+            
+Total Indexes
+| eventcount index=* summarize=false 
+      | where match(server, "^(idx|si)") | stats dc(index) as index_count
+      
+Ingest Volume
+`sim_licensing_summary_base`
+            | `sim_licensing_summary_no_split("")`
+            | fields - b volume
+            
+Searches by Type (Last 24 Hours)
+`sim_set_search_head` `sim_audit_get_searches_for_groups(*)`
+            | timechart count by search_type
+            
+Throughput by Index (Last 24 Hours)            
+`sim_set_index_internal` `sim_set_indexer` sourcetype=splunkd group=per_Index_thruput series!=_*
+            | `sim_timechart_for_metrics_log` sum(kb) as kb by series
+            
+Splunk TCP Port Closures (Last 4 Hours)
+`sim_set_index_internal` `sim_set_indexer` sourcetype=splunkd source=*splunkd.log log_level="WARN" component="TcpInputProc" "Stopping all listening ports."
+            | stats dc(host) as tcp_closure_count
+            | join [search index=_introspection sourcetype=splunk_resource_usage `sim_set_indexer` | stats dc(host) as idx_count]
+            | table idx_count tcp_closure_count
+            | eval tcp_close_ratio = round(tcp_closure_count / idx_count * 100, 2)
+            | fields tcp_close_ratio
+            | rename tcp_close_ratio as "Closure Ratio"
+            
+Long Running Searches (Last 4 Hours)
+`long_running_searches`
+
+Scheduled Search Skip Ratio (Last Hour)
+`scheduled_search_skip_ratio`
+
+Data Parsing Issues (Last Hour)
+`data_parsing_issues`
